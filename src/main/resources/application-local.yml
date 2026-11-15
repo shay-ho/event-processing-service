@@ -1,0 +1,8 @@
+# Local development against LocalStack only. These are LocalStack's dummy credentials, never real secrets.
+spring:
+  cloud:
+    aws:
+      endpoint: ${AWS_ENDPOINT:http://localhost:4566}
+      credentials:
+        access-key: test
+        secret-key: test

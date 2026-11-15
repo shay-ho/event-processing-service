@@ -1,0 +1,14 @@
+# תיקיית הבנייה של Maven
+target/
+
+# קבצים ותיקיות של IntelliJ IDEA
+.idea/
+*.iml
+*.iws
+*.ipr
+out/
+
+# קבצי מערכת הפעלה ולוגים
+.DS_Store
+Thumbs.db
+*.log

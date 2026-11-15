@@ -1,0 +1,55 @@
+server:
+  port: 8080
+  shutdown: graceful
+
+spring:
+  application:
+    name: event-processing-service
+  lifecycle:
+    timeout-per-shutdown-phase: 30s
+  data:
+    mongodb:
+      uri: ${MONGODB_URI:mongodb://localhost:27017/event_db?serverSelectionTimeoutMS=5000&connectTimeoutMS=5000&socketTimeoutMS=15000}
+      # Indexes are created explicitly (with spec names) by MongoConfig.
+      auto-index-creation: false
+  cloud:
+    aws:
+      # Credentials are NOT stored here. In AWS the ECS Task IAM Role / default provider chain is used.
+      # For LocalStack run with the "local" profile (application-local.yml) or set AWS_ACCESS_KEY_ID / AWS_SECRET_ACCESS_KEY.
+      region:
+        static: ${AWS_REGION:us-east-1}
+      sqs:
+        listener:
+          max-concurrent-messages: ${events.processing.worker-concurrency}
+          max-messages-per-poll: 10
+          poll-timeout: 10s
+
+events:
+  api:
+    # Spec section 12: overall payload size validation (HTTP 413 above this size).
+    max-payload-bytes: ${EVENTS_MAX_PAYLOAD_BYTES:32768}
+  sqs:
+    queue-name: ${EVENTS_QUEUE_NAME:events-queue}
+    dlq-name: ${EVENTS_DLQ_NAME:events-queue-dlq}
+    # Spec section 12: timeouts on every external call. Must exceed the 10s long-poll wait.
+    api-call-timeout-seconds: 60
+    api-call-attempt-timeout-seconds: 30
+    metrics-refresh-ms: 30000
+  processing:
+    max-retries: 3
+    # Single source for SQS max-concurrent-messages.
+    worker-concurrency: ${EVENTS_WORKER_CONCURRENCY:10}
+    # Worker lease (no renewal). The SQS Visibility Timeout of the main queue is 60s (init-sqs.sh) and MUST stay
+    # longer than this lease; normal processing is expected to take far less than the lease.
+    lease-seconds: 30
+    failure-simulation-enabled: false
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,prometheus
+
+logging:
+  pattern:
+    level: "%5p [corr=%X{correlationId:-}] [event=%X{eventId:-}] [worker=%X{workerId:-}] [lease=%X{leaseVersion:-}]"
